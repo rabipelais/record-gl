@@ -64,6 +64,13 @@ tileTex = foldMap (zipWith (\t p -> [r| {vertexCoord = p, texCoord = t} |]) (cyc
 grassTiles :: IO (BufferedVertices Vertex)
 grassTiles = bufferVertices . tileTex . spaceColumns $ map tile gameLevel
 
+-- Load the geometry data for all the dirt tiles into OpenGL.
+dirtTiles :: IO (BufferedVertices Vertex)
+dirtTiles = bufferVertices . tileTex . spaceColumns $ map col gameLevel
+  where
+    col :: Int -> [V2 GLfloat]
+    col h = foldMap tile [h - 1, h - 2 .. 1]
+
 loadTextures :: [FilePath] -> IO [TextureObject]
 loadTextures = fmap (either error id . sequence) . mapM aux
   where aux f = do
