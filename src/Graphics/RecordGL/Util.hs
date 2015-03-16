@@ -40,8 +40,13 @@ return $ flip map [1..24] $ \arity ->
                            (SigE (ConE (mkName "Proxy")) (AppT (ConT (mkName "Proxy")) n)))
         fieldNamesFun = FunD (mkName "fieldNames")
                              [Clause [WildP] (NormalB fieldNames') []]
+        vVals = map (\i -> "v" <> show i) [1..arity]
+        vTVals = map (VarT . mkName) vVals
         overFieldsFun = FunD (mkName "overFields")
-                             [Clause [] (NormalB (VarE (mkName "undefined"))) []]
+                             [Clause [VarP (mkName "f"), WildP]
+                             (NormalB (ListE $ map (\v -> AppE (VarE (mkName "f"))
+                                                                      (SigE (VarE (mkName "undefined"))
+                                                                            v)) vTVals)) []]
     in InstanceD context
                  (AppT (ConT (mkName "HasFields")) recordType)
                  [fieldNamesFun, overFieldsFun]
