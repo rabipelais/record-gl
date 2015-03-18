@@ -19,6 +19,7 @@ data-files:          assets/*.png, shaders/*.frag, shaders/*.vert
 library
   exposed-modules:     Graphics.RecordGL
                      , Graphics.RecordGL.Vertex
+                     , Graphics.RecordGL.Uniforms
                      , Graphics.RecordGL.Util
 --other-modules
   ghc-options:         -ddump-splices
