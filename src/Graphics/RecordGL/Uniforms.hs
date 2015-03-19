@@ -7,6 +7,9 @@
 module Graphics.RecordGL.Uniforms where
 
 import           BasePrelude               hiding (Proxy)
+import           Control.Applicative       ((<$>))
+import qualified Data.Map                  as M
+import           Data.Maybe                (fromMaybe)
 import           GHC.TypeLits              (Symbol)
 import           Graphics.GLUtil           (AsUniform (..),
                                             HasVariableType (..),
@@ -14,6 +17,9 @@ import           Graphics.GLUtil           (AsUniform (..),
 import           Graphics.Rendering.OpenGL (UniformLocation)
 import qualified Graphics.Rendering.OpenGL as GL
 import           Language.Haskell.TH
+
+import qualified Data.Set                  as S
+import           Graphics.RecordGL.Util
 import           Record
 import           Record.Types
 
@@ -26,6 +32,76 @@ class HasFieldGLTypes a where
 -- uniform parameters using the record fields.
 class SetUniformFields a where
   setUniformFields :: [Maybe UniformLocation] -> a -> IO ()
+
+type UniformFields a = (HasFields a, HasFieldGLTypes a, SetUniformFields a)
+
+-- | Set GLSL uniform parameters form a `Record` representing
+-- a subset of all uniform parameters used by a program.
+setUniforms :: forall record. UniformFields record => ShaderProgram -> record -> IO ()
+setUniforms s re = case checks of
+                    Left msg -> error msg
+                    Right _ -> setUniformFields locs re
+  where
+    fnames = fieldNames re
+    checks = do
+      namesCheck "GLSL programme" fnames (M.keys $ uniforms s)
+      typesCheck False fieldTypes (snd <$> uniforms s)
+    fieldTypes = M.fromList $ zip fnames (fieldGLTypes re)
+    locs = map (fmap fst . (`M.lookup` uniforms s)) fnames
+
+-- | @namesCheck culprit little big@ checks that each name in @little@ is
+-- an element of @big@.
+namesCheck :: String -> [String] -> [String] -> Either String ()
+namesCheck culprit little big = mapM_ go little
+  where
+    big' = S.fromList big
+    go x | x `S.member` big' = Right ()
+         | otherwise = Left $ "Field " ++ x ++ " not found in " ++ culprit
+
+-- | @typesChecks blame little big@ checks that each (name,type) pair
+-- in @little@ is a member of @big@.
+typesCheck :: Bool
+           -> M.Map String GL.VariableType -> M.Map String GL.VariableType
+           -> Either String ()
+typesCheck blame little big = mapM_ go $ M.toList little
+  where
+    go (n, t) | (glTypeEquiv t <$> M.lookup n big) == Just True = return ()
+              | otherwise = Left $ msg n (show t) (maybe "" show (M.lookup n big))
+    msg n t t' = let (expected, actual) = if blame then (t, t') else (t', t)
+                 in "Record and GLSL types disagree on field " ++ n ++
+                    ": GLSL expected " ++ expected ++
+                    ", record disappointed with " ++ actual
+
+-- | @typesCheck' blame little big@ checks that each (name,type) pair
+-- in the intersection of @little@ and @big@ is consistent.
+typesCheck' :: Bool
+           -> M.Map String GL.VariableType -> M.Map String GL.VariableType
+           -> Either String ()
+typesCheck' blame little big = mapM_ go $ M.toList little
+  where
+    go (n, t) | fromMaybe True (glTypeEquiv t <$> M.lookup n big) = return ()
+              | otherwise = Left $ msg n (show t) (maybe "" show (M.lookup n big))
+    msg n t t' = let (expected, actual) = if blame then (t, t') else (t', t)
+                 in "Record and GLSL types disagree on field " ++ n ++
+                    ": GLSL expected " ++ expected ++
+                    ", record disappointed with " ++ actual
+
+-- We define our own equivalence relation on types because we don't
+-- have unique Haskell representations for every GL type. For example,
+-- the GLSL sampler types (e.g. Sampler2D) are just GLint in Haskell.
+glTypeEquiv :: GL.VariableType -> GL.VariableType -> Bool
+glTypeEquiv x y = glTypeEquiv' x y || glTypeEquiv' y x
+
+-- The equivalence on 'GL.VariableType's we need identifies Samplers
+-- with Ints because this is how GLSL represents samplers.
+glTypeEquiv' :: GL.VariableType -> GL.VariableType -> Bool
+glTypeEquiv' GL.Sampler1D GL.Int' = True
+glTypeEquiv' GL.Sampler2D GL.Int' = True
+glTypeEquiv' GL.Sampler3D GL.Int' = True
+glTypeEquiv' x y = x == y
+
+
+-- Template Haskell instances. Here be dragons, beware... -----------------------
 
 -- I would rather have written this by hand and some Emacs macros...
 -- Instances for the HasFieldGLTypes class
@@ -86,10 +162,3 @@ return $ flip map [1..24] $ \arity ->
     in InstanceD context
                  (AppT (ConT (mkName "SetUniformFields")) recordType)
                  [setUniformFieldsFun]
-
-type UniformFields a = (HasFieldGLTypes a, SetUniformFields a)
-
--- | Set GLSL uniform parameters form a `Record` representing
--- a subset of all uniform parameters used by a program.
-setUniforms :: forall rs. UniformFields rs => IO rs
-setUniforms = undefined
