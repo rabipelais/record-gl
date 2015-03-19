@@ -23,7 +23,7 @@ library
                      , Graphics.RecordGL.Util
 --other-modules
   ghc-options:         -ddump-splices
-  build-depends:       GLFW-b >= 1.4 && < 1.5
+  build-depends:       GLFW-b >= 1.4 && < 1.4.7
                      , GLUtil >= 0.7
                      , OpenGL >= 2.9.2
                      , base >=4.7 && <4.8
@@ -42,7 +42,7 @@ executable Game2D
   main-is:             Main.hs
   other-modules:       Window
   -- other-extensions:
-  build-depends:       GLFW-b >= 1.4 && < 1.5
+  build-depends:       GLFW-b >= 1.4 && < 1.4.7
                      , GLUtil >= 0.7
                      , OpenGL >= 2.9.2
                      , base >=4.7 && <4.8
