@@ -7,10 +7,7 @@
 module Graphics.RecordGL.Uniforms where
 
 import           BasePrelude               hiding (Proxy)
-import           Control.Applicative       ((<$>))
 import qualified Data.Map                  as M
-import           Data.Maybe                (fromMaybe)
-import           GHC.TypeLits              (Symbol)
 import           Graphics.GLUtil           (AsUniform (..),
                                             HasVariableType (..),
                                             ShaderProgram (..))
@@ -20,7 +17,6 @@ import           Language.Haskell.TH
 
 import qualified Data.Set                  as S
 import           Graphics.RecordGL.Util
-import           Record
 import           Record.Types
 
 -- | Provide the 'GL.VariableType' of each field in a 'Record'. The list
@@ -35,18 +31,47 @@ class SetUniformFields a where
 
 type UniformFields a = (HasFields a, HasFieldGLTypes a, SetUniformFields a)
 
+-- | Set GLSL uniform parameters from a 'Record'. A check is
+-- performed to verify that /all/ uniforms used by a program are
+-- represented by the record type. In other words, the record is a
+-- superset of the parameters used by the program.
+setAllUniforms :: forall record. UniformFields record
+            => ShaderProgram -> record -> IO ()
+setAllUniforms s r = case checks of
+                      Left msg -> error msg
+                      Right _ -> setUniformFields locs r
+  where
+    fnames = fieldNames r
+    checks = do
+      namesCheck "record" (M.keys $ uniforms s) fnames
+      typesCheck True (snd <$> uniforms s) fieldTypes
+    fieldTypes = M.fromList $ zip fnames (fieldGLTypes r)
+    locs = map (fmap fst . (`M.lookup` uniforms s)) fnames
+
 -- | Set GLSL uniform parameters form a `Record` representing
 -- a subset of all uniform parameters used by a program.
 setUniforms :: forall record. UniformFields record => ShaderProgram -> record -> IO ()
-setUniforms s re = case checks of
-                    Left msg -> error msg
-                    Right _ -> setUniformFields locs re
+setUniforms s r = case checks of
+                   Left msg -> error msg
+                   Right _ -> setUniformFields locs r
   where
-    fnames = fieldNames re
+    fnames = fieldNames r
     checks = do
       namesCheck "GLSL programme" fnames (M.keys $ uniforms s)
       typesCheck False fieldTypes (snd <$> uniforms s)
-    fieldTypes = M.fromList $ zip fnames (fieldGLTypes re)
+    fieldTypes = M.fromList $ zip fnames (fieldGLTypes r)
+    locs = map (fmap fst . (`M.lookup` uniforms s)) fnames
+
+-- | Set GLSL uniform parameters from those fields of a 'PlainRec'
+-- whose names correspond to uniform parameters used by a program.
+setSomeUniforms :: forall r. UniformFields r
+                => ShaderProgram -> r -> IO ()
+setSomeUniforms s r = case typesCheck' True (snd <$> uniforms s) fieldTypes of
+                       Left msg -> error msg
+                       Right _ -> setUniformFields locs r
+  where
+    fnames = fieldNames r
+    fieldTypes = M.fromList . zip fnames $ fieldGLTypes r
     locs = map (fmap fst . (`M.lookup` uniforms s)) fnames
 
 -- | @namesCheck culprit little big@ checks that each name in @little@ is
