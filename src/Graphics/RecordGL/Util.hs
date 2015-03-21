@@ -24,7 +24,6 @@ import           Record.Types
 
 class HasFields a where
     fieldNames :: a -> [String]
-    overFields :: (forall b. b -> c) -> a -> [c]
 
 return $ flip map [1..24] $ \arity ->
     let typeName = mkName $ "Record" <> show arity
@@ -40,13 +39,40 @@ return $ flip map [1..24] $ \arity ->
                            (SigE (ConE (mkName "Proxy")) (AppT (ConT (mkName "Proxy")) n)))
         fieldNamesFun = FunD (mkName "fieldNames")
                              [Clause [WildP] (NormalB fieldNames') []]
-        vVals = map (\i -> "v" <> show i) [1..arity]
-        vTVals = map (VarT . mkName) vVals
-        overFieldsFun = FunD (mkName "overFields")
-                             [Clause [VarP (mkName "f"), WildP]
-                             (NormalB (ListE $ map (\v -> AppE (VarE (mkName "f"))
-                                                                      (SigE (VarE (mkName "undefined"))
-                                                                            v)) vTVals)) []]
     in InstanceD context
                  (AppT (ConT (mkName "HasFields")) recordType)
-                 [fieldNamesFun, overFieldsFun]
+                 [fieldNamesFun]
+
+-- | Compute the dimensionality of each field in a record. This is
+-- primarily useful for things like the small finite vector types
+-- provided by "Linear".
+class HasFieldDims a where
+    fieldDims :: a -> [Int]
+
+return $ flip map [1..24] $ \arity ->
+    let typeName = mkName $ "Record" <> show arity
+        recordType = foldl (\a i -> AppT (AppT a (SigT (VarT (mkName ("n" <> show i))) (ConT ''Symbol)))
+                                         (AppT (VarT (mkName ("l" <> show i))) (VarT (mkName ("v" <> show i)))))
+                           (ConT typeName)
+                           [1 .. arity]
+        vVals = map (\i -> "v" <> show i) [1..arity]
+        vTVals = map (VarT . mkName) vVals
+        lVals =  map (\i -> "l" <> show i) [1..arity]
+        lTVals = map (VarT . mkName) lVals
+        vectorTVals = zipWith AppT lTVals vTVals
+        numCxt = map (\i -> ClassP (mkName "Num") [i]) vectorTVals
+        foldCxt = map (\i -> ClassP (mkName "Foldable") [i]) lTVals
+        context = foldCxt ++ numCxt
+        nameE = VarE . mkName
+        fieldDims' = ListE $ flip map vectorTVals
+                   (\v -> nameE "getSum" `AppE`
+                         (nameE "foldMap" `AppE`
+                          (nameE "const" `AppE`
+                           (ConE (mkName "Sum") `AppE` (LitE (IntegerL 1)))) `AppE`
+                         (SigE (LitE (IntegerL 0)) v)))
+        fieldDimsFun = FunD (mkName "fieldDims")
+                            [Clause [WildP]
+                            (NormalB fieldDims') []]
+    in InstanceD context
+                 (AppT (ConT (mkName "HasFieldDims")) recordType)
+                 [fieldDimsFun]
