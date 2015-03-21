@@ -131,7 +131,7 @@ glTypeEquiv' x y = x == y
 -- I would rather have written this by hand and some Emacs macros...
 -- Instances for the HasFieldGLTypes class
 -- Example implementation:
--- fieldGLTypes (RecordX v1...vn) = [variableType v1,...,variableType v2]
+-- fieldGLTypes _ = [variableType (undefined::v1),...,variableType (undefined::vn)]
 return $ flip map [1..24] $ \arity ->
   let typeName = mkName $ "Record" <> show arity
       recordType = foldl (\a i -> AppT (AppT a (VarT (mkName ("n" <> show i))))

@@ -20,6 +20,7 @@ import           Graphics.RecordGL.Uniforms
 
 import           BasePrelude
 import qualified Data.Map                   as M
+import           Data.Proxy
 import qualified Data.Vector.Storable       as V
 import           Foreign.Ptr                (plusPtr)
 import           Foreign.Storable
@@ -63,16 +64,16 @@ type ViableVertex t = (HasFields t, HasFieldSizes t, HasFieldDims t,
 -- | Line up a shader's attribute inputs with a vertex record. This
 -- maps vertex fields to GLSL attributes on the basis of record field names
 -- on the Haskell side, and variable names on the GLSL side.
-enableVertices :: forall r. ViableVertex r
-               => ShaderProgram -> r -> IO (Maybe String)
-enableVertices = enableAttribs
+enableVertices :: forall f r. ViableVertex r
+               => ShaderProgram -> f r -> IO (Maybe String)
+enableVertices s _ = enableAttribs s (Proxy :: Proxy r)
 
 -- | Behaves like 'enableVertices', but raises an exception if the
 -- supplied vertex record does not include a field required by the
 -- shader.
-enableVertices' :: forall r. ViableVertex r
-               => ShaderProgram -> r -> IO ()
-enableVertices' s r = enableAttribs s r >>=
+enableVertices' :: forall f r. ViableVertex r
+               => ShaderProgram -> f r -> IO ()
+enableVertices' s _ = enableAttribs s (Proxy::Proxy r) >>=
                       maybe (return ()) error
 
 data FieldDescriptor = FieldDescriptor { fieldName   :: String
@@ -92,14 +93,16 @@ fieldDescriptors x = getZipList $
 -- | Bind some of a shader's attribute inputs to a vertex record. This
 -- is useful when the inputs of a shader are split across multiple
 -- arrays.
-enableVertexFields :: forall r. ViableVertex r
-                   => ShaderProgram -> r -> IO ()
-enableVertexFields s r = enableSomeAttribs s r >>= maybe (return ()) error
+enableVertexFields :: forall p r. ViableVertex r
+                   => ShaderProgram -> p r -> IO ()
+enableVertexFields s _ = enableSomeAttribs s p >>= maybe (return ()) error
+  where
+    p = Proxy::Proxy r
 
 -- | Do not raise an error is some of a shader's inputs are not bound
 -- by a vertex record.
 enableSomeAttribs :: forall v. ViableVertex v
-                  => ShaderProgram -> v -> IO (Maybe String)
+                  => ShaderProgram -> Proxy v -> IO (Maybe String)
 enableSomeAttribs s p = go $ fieldDescriptors (undefined::v)
   where go [] = return Nothing
         go (fd:fds) =
@@ -115,7 +118,7 @@ enableSomeAttribs s p = go $ fieldDescriptors (undefined::v)
                  | otherwise -> return . Just $ "Type mismatch in " ++ n
 
 enableAttribs :: forall v. ViableVertex v
-              => ShaderProgram -> v -> IO (Maybe String)
+              => ShaderProgram -> Proxy v -> IO (Maybe String)
 enableAttribs s p = go (map (second snd) $ M.assocs (attribs s))
   where
     go [] = return Nothing
@@ -128,10 +131,10 @@ enableAttribs s p = go (map (second snd) $ M.assocs (attribs s))
                              descriptorVAD p fd
                            go as
                          | otherwise -> return . Just $ "Type mismatch in " ++ l
-    fs = fieldDescriptors p
+    fs = fieldDescriptors (undefined::v)
 
 descriptorVAD :: forall t a. Storable t
-              => t -> FieldDescriptor -> VertexArrayDescriptor a
+              => Proxy t -> FieldDescriptor -> VertexArrayDescriptor a
 descriptorVAD _ fd = VertexArrayDescriptor (fromIntegral $ fieldDim fd)
                                            (variableDataType $ fieldType fd)
                                            (fromIntegral $
