@@ -22,7 +22,7 @@ library
                      , Graphics.RecordGL.Uniforms
                      , Graphics.RecordGL.Util
 --other-modules
-  ghc-options:         -ddump-splices
+--  ghc-options:         -ddump-splices
   build-depends:       GLFW-b >= 1.4 && < 1.4.7
                      , GLUtil >= 0.7
                      , OpenGL >= 2.9.2
@@ -35,12 +35,13 @@ library
                      , linear >= 1.1.3
                      , record >= 0.3
                      , template-haskell
+                     , vector >= 0.10
   hs-source-dirs: src
   default-language:    Haskell2010
 
 executable Game2D
   main-is:             Main.hs
-  other-modules:       Window
+  other-modules:       Window, Keyboard2D
   -- other-extensions:
   build-depends:       GLFW-b >= 1.4 && < 1.4.7
                      , GLUtil >= 0.7
@@ -54,5 +55,6 @@ executable Game2D
                      , record >= 0.3
                      , records-gl >= 0.1.0.0
                      , time >= 1.4.2
+                     , vector >= 0.10
   hs-source-dirs:      examples/2D
   default-language:    Haskell2010

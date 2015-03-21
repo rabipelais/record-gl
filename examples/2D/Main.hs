@@ -5,6 +5,10 @@
 module Main where
 
 import           Graphics.RecordGL
+import           Keyboard2D                (moveCamera)
+import           Record
+import           Record.Types
+import           Window                    (UI (..), initGL)
 
 import           Control.Applicative       ((<$>), (<*>))
 import           Control.Lens
@@ -13,20 +17,20 @@ import           Graphics.GLUtil           (bufferIndices, drawIndexedTris,
                                             makeVAO, program, readTexture,
                                             simpleShaderProgram, texture2DWrap,
                                             withTextures2D, withVAO)
+import           Graphics.GLUtil.Camera2D
 import           Graphics.Rendering.OpenGL (BlendingFactor (..),
                                             BufferTarget (..),
                                             Capability (Enabled), Clamping (..),
-                                            Color4 (..), GLfloat, GLint,
-                                            Repetition (..), TextureFilter (..),
+                                            ClearBuffer (..), Color4 (..),
+                                            GLfloat, GLint, Repetition (..),
+                                            TextureFilter (..),
                                             TextureObject (..),
                                             TextureTarget2D (..), bindBuffer,
-                                            blend, blendFunc, clearColor,
+                                            blend, blendFunc, clear, clearColor,
                                             currentProgram, textureFilter, ($=))
+import           Graphics.UI.GLFW          (Key (Key'Escape))
 import           Linear                    (M33, V2 (..), _x)
-import           Record
-import           Record.Types
 import           System.FilePath           ((</>))
-import           Window                    (UI (..), initGL)
 
 -- A record each drawing function will receive
 type AppInfo = [r| {cam :: M33 GLfloat} |]
@@ -87,10 +91,12 @@ loadTextures = fmap (either error id . sequence) . mapM aux
           textureFilter Texture2D $= ((Nearest, Nothing), Nearest)
           texture2DWrap $= (Repeated, ClampToEdge)
 
+-- Ground textures from: http://opengameart.org/content/platformer-tiles
+-- Attributed to: "Kenney.nl" or "www.kenney.nl"
 background :: IO (AppInfo -> IO ())
 background = do
-    [grass, dirt] <- loadTextures $ map ("art" </>) ["ground.png", "ground_dirt.png"]
-    s <- simpleShaderProgram ("etc" </> "game2d.vert") ("etc" </> "game2d.frag")
+    [grass, dirt] <- loadTextures $ map ("assets" </>) ["ground.png", "ground_dirt.png"]
+    s <- simpleShaderProgram ("shaders" </> "game2d.vert") ("shaders" </> "game2d.frag")
     putStrLn "Loaded shaders"
     setUniforms s (texSampler 0)
     grassVerts <- grassTiles
@@ -125,8 +131,21 @@ setup = do
     blendFunc $= (SrcAlpha, OneMinusSrcAlpha)
     background
 
+-- The game loop makes use of a frame-tick action that provides an
+-- updated 'UI' value and the drawing function returned from 'setup'.
 loop :: IO UI -> IO ()
-loop = undefined
+loop tick = setup >>= go camera2D
+  where
+    go :: Camera GLfloat -> (AppInfo -> IO ()) -> IO ()
+    go c draw = do
+      ui <- tick
+      clear [ColorBuffer, DepthBuffer]
+      let mCam = camMatrix c
+          info = [r|{cam = mCam}|]
+      draw info
+      if keysPressed ui ^. contains Key'Escape
+         then return ()
+         else go (moveCamera ui c) draw
 
 main :: IO ()
 main = usage >> initGL "2D Platformer" 640 480 >>= loop
