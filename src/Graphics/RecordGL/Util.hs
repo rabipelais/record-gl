@@ -18,6 +18,7 @@ module Graphics.RecordGL.Util  where
 
 import           BasePrelude         hiding (Proxy)
 import           Data.Proxy
+import           Foreign.Storable    (Storable (sizeOf))
 import           GHC.TypeLits
 import           Language.Haskell.TH
 import           Record.Types
@@ -76,3 +77,25 @@ return $ flip map [1..24] $ \arity ->
     in InstanceD context
                  (AppT (ConT (mkName "HasFieldDims")) recordType)
                  [fieldDimsFun]
+
+-- | Compute the size in bytes of of each field in a record.
+class HasFieldSizes a where
+  fieldSizes :: a -> [Int]
+
+return $ flip map [1..24] $ \arity ->
+    let typeName = mkName $ "Record" <> show arity
+        recordType = foldl (\a i -> AppT (AppT a (SigT (VarT (mkName ("n" <> show i))) (ConT ''Symbol)))
+                                         (VarT (mkName ("v" <> show i))))
+                           (ConT typeName)
+                           [1 .. arity]
+        vVals = map (\i -> "v" <> show i) [1..arity]
+        vTVals = map (VarT . mkName) vVals
+        context = map (\v -> ClassP (mkName "Storable") [v]) vTVals
+        fieldSizes' = ListE $ flip map vTVals
+                    (\v -> AppE (VarE (mkName "sizeOf"))
+                           (SigE (VarE (mkName "undefined")) v))
+        fieldSizesFun = FunD (mkName "fieldSizes")
+                             [Clause [WildP] (NormalB fieldSizes') []]
+    in InstanceD context
+                 (AppT (ConT (mkName "HasFieldSizes")) recordType)
+                 [fieldSizesFun]
