@@ -4,7 +4,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 
-module Graphics.RecordGL.Uniforms where
+-- | Tools for binding vinyl records to GLSL program uniform
+-- parameters. The most common usage is to use the 'setUniforms'
+-- function to set each field of a 'Record' to the GLSL uniform
+-- parameter with the same name. This verifies that each field of the
+-- record corresponds to a uniform parameter of the given shader
+-- program, and that the types all agree.
+module Graphics.RecordGL.Uniforms (
+    -- * Operations for binding uniform values
+    setAllUniforms, setSomeUniforms, setUniforms,
+    -- * Useful type classes for setting and verifying fields
+    HasFieldGLTypes(..), UniformFields, SetUniformFields) where
 
 import           BasePrelude               hiding (Proxy)
 import qualified Data.Map                  as M

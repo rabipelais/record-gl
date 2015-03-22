@@ -28,7 +28,7 @@ library
 --  ghc-options:         -ddump-splices
   build-depends:       GLUtil >= 0.7
                      , OpenGL >= 2.9.2
-                     , base >=4.7 && <4.8
+                     , base >=4.6 && <4.8
                      , base-prelude
                      , containers >= 0.5.5.1
                      , linear >= 1.1.3
