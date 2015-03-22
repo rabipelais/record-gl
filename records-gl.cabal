@@ -7,14 +7,17 @@ description:         Using Nikita Volkov's "Record" records
                      facilitate interaction between Haskell and GLSL. See the
                      @examples@ directory in the repository for more.
 license:             BSD3
-license-file:        LICENSE
-author:              Sebastian Mendez
+license-file:        LICENCE
+author:              Sebastián Méndez
 maintainer:          sebas.chinoir@gmail.com
-copyright:           Original work copyright (C) 2013 Anthony Cowley, modifications copyright (C) 2015 Sebastian Mendez
+copyright:           Original work copyright (C) 2013 Anthony Cowley, modifications copyright (C) 2015 Sebastián Méndez
 category:            Graphics
 build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
+source-repository head
+  type:     git
+  location: http://github.com/rabipelais/record-gl
 
 library
   exposed-modules:     Graphics.RecordGL
