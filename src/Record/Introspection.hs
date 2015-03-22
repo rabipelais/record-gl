@@ -12,17 +12,19 @@
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 
--- |
-
-module Graphics.RecordGL.Util  where
+-- | Introspect field names and other attributes of a "Record".
+module Record.Introspection  where
 
 import           BasePrelude         hiding (Proxy)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
 import           Data.Proxy
+#endif
 import           Foreign.Storable    (Storable (sizeOf))
 import           GHC.TypeLits
 import           Language.Haskell.TH
 import           Record.Types
 
+-- | List all field names in a record.
 class HasFields a where
     fieldNames :: a -> [String]
 
@@ -34,10 +36,16 @@ return $ flip map [1..24] $ \arity ->
                            [1 .. arity]
         nVals = map (\i -> "n" <> show i) [1..arity]
         nTVals = map (VarT . mkName) nVals
-        context = map (\n -> ClassP (mkName "KnownSymbol") [n]) nTVals
         fieldNames' = ListE $ flip map nTVals
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
                     (\n -> AppE (VarE (mkName "symbolVal"))
                            (SigE (ConE (mkName "Proxy")) (AppT (ConT (mkName "Proxy")) n)))
+        context = map (\n -> ClassP (mkName "KnownSymbol") [n]) nTVals
+#else
+                    (\n -> AppE (VarE (mkName "fromSing"))
+                           (SigE (VarE (mkName "sing")) (AppT (ConT (mkName "Proxy")) n)))
+        context = map (\n -> ClassP (mkName "SingI") [n]) nTVals
+#endif
         fieldNamesFun = FunD (mkName "fieldNames")
                              [Clause [WildP] (NormalB fieldNames') []]
     in InstanceD context

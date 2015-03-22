@@ -20,7 +20,7 @@ library
   exposed-modules:     Graphics.RecordGL
                      , Graphics.RecordGL.Vertex
                      , Graphics.RecordGL.Uniforms
-                     , Graphics.RecordGL.Util
+                     , Record.Introspection
 --other-modules
 --  ghc-options:         -ddump-splices
   build-depends:       GLUtil >= 0.7

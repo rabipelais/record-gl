@@ -17,6 +17,7 @@ module Graphics.RecordGL.Vertex (bufferVertices, bindVertices, reloadVertices
                                 , enableVertexFields, ViableVertex, BufferedVertices(..)) where
 
 import           Graphics.RecordGL.Uniforms
+import           Record.Introspection
 
 import           BasePrelude
 import qualified Data.Map                   as M
@@ -26,7 +27,6 @@ import           Foreign.Ptr                (plusPtr)
 import           Foreign.Storable
 import           GHC.TypeLits
 import           Graphics.GLUtil            hiding (Elem, throwError)
-import           Graphics.RecordGL.Util
 import           Graphics.Rendering.OpenGL  (BufferTarget (..),
                                              VertexArrayDescriptor (..),
                                              bindBuffer, ($=))

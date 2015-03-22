@@ -16,7 +16,7 @@ import qualified Graphics.Rendering.OpenGL as GL
 import           Language.Haskell.TH
 
 import qualified Data.Set                  as S
-import           Graphics.RecordGL.Util
+import           Record.Introspection
 import           Record.Types
 
 -- | Provide the 'GL.VariableType' of each field in a 'Record'. The list
