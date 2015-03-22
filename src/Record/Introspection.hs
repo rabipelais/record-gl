@@ -36,15 +36,20 @@ return $ flip map [1..24] $ \arity ->
                            [1 .. arity]
         nVals = map (\i -> "n" <> show i) [1..arity]
         nTVals = map (VarT . mkName) nVals
+#if MIN_VERSION_template_haskell(2,10,0)
+        mkContext c t = AppT (ConT (mkName c)) t
+#else
+        mkContext c t = ClassP (mkName c) [t]
+#endif
         fieldNames' = ListE $ flip map nTVals
 #if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
                     (\n -> AppE (VarE (mkName "symbolVal"))
                            (SigE (ConE (mkName "Proxy")) (AppT (ConT (mkName "Proxy")) n)))
-        context = map (\n -> ClassP (mkName "KnownSymbol") [n]) nTVals
+        context = map (\n -> mkContext "KnownSymbol" n) nTVals
 #else
                     (\n -> AppE (VarE (mkName "fromSing"))
                            (SigE (VarE (mkName "sing")) (AppT (ConT (mkName "Proxy")) n)))
-        context = map (\n -> ClassP (mkName "SingI") [n]) nTVals
+        context = map (\n -> mkContext "SingI" n) nTVals
 #endif
         fieldNamesFun = FunD (mkName "fieldNames")
                              [Clause [WildP] (NormalB fieldNames') []]
@@ -69,10 +74,15 @@ return $ flip map [1..24] $ \arity ->
         lVals =  map (\i -> "l" <> show i) [1..arity]
         lTVals = map (VarT . mkName) lVals
         vectorTVals = zipWith AppT lTVals vTVals
-        numCxt = map (\i -> ClassP (mkName "Num") [i]) vectorTVals
-        foldCxt = map (\i -> ClassP (mkName "Foldable") [i]) lTVals
+        numCxt = map (\i -> mkContext "Num" i) vectorTVals
+        foldCxt = map (\i -> mkContext "Foldable" i) lTVals
         context = foldCxt ++ numCxt
         nameE = VarE . mkName
+#if MIN_VERSION_template_haskell(2,10,0)
+        mkContext c t = AppT (ConT (mkName c)) t
+#else
+        mkContext c t = ClassP (mkName c) [t]
+#endif
         fieldDims' = ListE $ flip map vectorTVals
                    (\v -> nameE "getSum" `AppE`
                          (nameE "foldMap" `AppE`
@@ -98,7 +108,12 @@ return $ flip map [1..24] $ \arity ->
                            [1 .. arity]
         vVals = map (\i -> "v" <> show i) [1..arity]
         vTVals = map (VarT . mkName) vVals
-        context = map (\v -> ClassP (mkName "Storable") [v]) vTVals
+#if MIN_VERSION_template_haskell(2,10,0)
+        mkContext c t = AppT (ConT (mkName c)) t
+#else
+        mkContext c t = ClassP (mkName c) [t]
+#endif
+        context = map (\v -> mkContext "Storable" v) vTVals
         fieldSizes' = ListE $ flip map vTVals
                     (\v -> AppE (VarE (mkName "sizeOf"))
                            (SigE (VarE (mkName "undefined")) v))

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE ConstraintKinds     #-}
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE RankNTypes          #-}
@@ -150,7 +151,12 @@ return $ flip map [1..24] $ \arity ->
                          [1 .. arity]
       vVals = map (\i -> "v" <> show i) [1..arity]
       vTVals = map (VarT . mkName) vVals
-      context = map (\v -> ClassP (mkName "HasVariableType") [v]) vTVals
+#if MIN_VERSION_template_haskell(2,10,0)
+      mkContext c t = AppT (ConT (mkName c)) t
+#else
+      mkContext c t = ClassP (mkName c) [t]
+#endif
+      context = map (\v -> mkContext "HasVariableType" v) vTVals
       typesList = ListE $ map (AppE (VarE (mkName "variableType")) .
                                     SigE (VarE (mkName "undefined")))
                           vTVals
@@ -172,7 +178,12 @@ return $ flip map [1..24] $ \arity ->
         typePattern = ConP typeName (map (\i -> VarP (mkName ("v" <> show i))) [1..arity])
         vNames = map (\i -> mkName $ "v" <> show i) [1..arity]
         vTVals = map VarT vNames
-        context = map (\v -> ClassP (mkName "AsUniform") [v]) vTVals
+#if MIN_VERSION_template_haskell(2,10,0)
+        mkContext c t = AppT (ConT (mkName c)) t
+#else
+        mkContext c t = ClassP (mkName c) [t]
+#endif
+        context = map (\v -> mkContext "AsUniform" v) vTVals
         nameE = VarE . mkName
         uniformNames = map (\i -> mkName ("u" <> show i)) [1..arity + 1]
         uniformPat = AsP (mkName "us") $ foldr1 (\i a -> InfixP i (mkName ":") a) $ map VarP uniformNames
