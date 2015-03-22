@@ -29,7 +29,7 @@ class HasFieldGLTypes a where
 class SetUniformFields a where
   setUniformFields :: [Maybe UniformLocation] -> a -> IO ()
 
-type UniformFields a = (HasFields a, HasFieldGLTypes a, SetUniformFields a)
+type UniformFields a = (HasFieldNames a, HasFieldGLTypes a, SetUniformFields a)
 
 -- | Set GLSL uniform parameters from a 'Record'. A check is
 -- performed to verify that /all/ uniforms used by a program are

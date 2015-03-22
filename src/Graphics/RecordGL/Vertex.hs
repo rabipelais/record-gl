@@ -58,7 +58,7 @@ bindVertices :: BufferedVertices a -> IO ()
 bindVertices = (bindBuffer ArrayBuffer $=) . Just . getVertexBuffer
 
 -- | Constraint alias capturing the requirements of a vertex type.
-type ViableVertex t = (HasFields t, HasFieldSizes t, HasFieldDims t,
+type ViableVertex t = (HasFieldNames t, HasFieldSizes t, HasFieldDims t,
                        HasFieldGLTypes t, Storable t)
 
 -- | Line up a shader's attribute inputs with a vertex record. This

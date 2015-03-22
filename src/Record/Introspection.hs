@@ -25,7 +25,7 @@ import           Language.Haskell.TH
 import           Record.Types
 
 -- | List all field names in a record.
-class HasFields a where
+class HasFieldNames a where
     fieldNames :: a -> [String]
 
 return $ flip map [1..24] $ \arity ->
@@ -49,7 +49,7 @@ return $ flip map [1..24] $ \arity ->
         fieldNamesFun = FunD (mkName "fieldNames")
                              [Clause [WildP] (NormalB fieldNames') []]
     in InstanceD context
-                 (AppT (ConT (mkName "HasFields")) recordType)
+                 (AppT (ConT (mkName "HasFieldNames")) recordType)
                  [fieldNamesFun]
 
 -- | Compute the dimensionality of each field in a record. This is
