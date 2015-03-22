@@ -48,7 +48,7 @@ return $ flip map [1..24] $ \arity ->
         context = map (\n -> mkContext "KnownSymbol" n) nTVals
 #else
                     (\n -> AppE (VarE (mkName "fromSing"))
-                           (SigE (VarE (mkName "sing")) (AppT (ConT (mkName "Proxy")) n)))
+                           (SigE (VarE (mkName "sing")) (AppT (ConT (mkName "Sing")) n)))
         context = map (\n -> mkContext "SingI" n) nTVals
 #endif
         fieldNamesFun = FunD (mkName "fieldNames")
