@@ -1,23 +1,26 @@
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE ConstraintKinds     #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE NoImplicitPrelude   #-}
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 -- | Utilities for working with vertex buffer objects (VBOs) filled
 -- with vertices represented as `Records`.
 module Graphics.RecordGL.Vertex (bufferVertices, bindVertices, reloadVertices
                                 , deleteVertices, enableVertices, enableVertices'
-                                , enableVertexFields, ViableVertex, BufferedVertices(..)) where
+                                , enableVertexFields, fieldToVAD
+                                , ViableVertex, BufferedVertices(..)) where
 
 import           Graphics.RecordGL.Uniforms
 import           Record.Introspection
+import           Record.Types
 
 import           BasePrelude
 import qualified Data.Map                   as M
@@ -140,3 +143,35 @@ descriptorVAD _ fd = VertexArrayDescriptor (fromIntegral $ fieldDim fd)
                                            (fromIntegral $
                                             sizeOf (undefined::t))
                                            (offset0 `plusPtr` fieldOffset fd)
+
+namesAndOffsets :: (HasFieldNames t, HasFieldSizes t) => t -> [(String, Int)]
+namesAndOffsets x = zip (fieldNames x) (scanl (+) 0 (fieldSizes x))
+
+-- | Produce a 'GL.VertexArrayDescriptor' for a particular field of a
+-- vertex record.
+-- fieldToVAD :: forall r v a sy proxy.
+--               (
+--                Foldable v)
+--            => String -> proxy r -> GL.VertexArrayDescriptor a
+fieldToVAD :: forall sy r v a proxy.
+              (Field' sy r (v a), HasFieldNames r, HasFieldSizes r, HasGLType a, Storable r, Num (v a),
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+               KnownSymbol sy,
+#else
+               SingI sy,
+#endif
+               Foldable v)
+           => FieldName sy -> r -> GL.VertexArrayDescriptor a
+fieldToVAD _ _ = GL.VertexArrayDescriptor dim
+                                          (glType (undefined::a))
+                                          (fromIntegral sz)
+                                          (offset0 `plusPtr` offset)
+  where
+    sz = sizeOf (undefined::r)
+    dim = getSum $ foldMap (const (Sum 1)) (0::v a)
+    Just offset = lookup n $ namesAndOffsets (undefined::r)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 707
+    n = symbolVal (Proxy::Proxy sy)
+#else
+    n = fromSing (sing::Sing sy)
+#endif
